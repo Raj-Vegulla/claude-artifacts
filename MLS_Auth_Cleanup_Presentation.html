@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLS Auth Bulk Cleanup — Product Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f5ed;
+  --surface: #ffffff;
+  --text: #1a1710;
+  --text-muted: #6b6355;
+  --accent: #9a7b2d;
+  --accent-light: #f0e8d4;
+  --border: #e0dbd0;
+  --green: #3d7a45;
+  --green-bg: #e8f5e9;
+  --red: #b54040;
+  --red-bg: #fdeaea;
+  --blue: #3b6fa0;
+  --blue-bg: #e3eef7;
+  --teal: #2a7a6f;
+  --teal-bg: #e0f2f0;
+  --orange: #b5732a;
+  --orange-bg: #fef3e6;
+  --purple: #6b5ba0;
+  --purple-bg: #eee8f7;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Slide container ── */
+.slide {
+  min-height: 100dvh;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 5vw, 60px);
+  isolation: isolate;
+  position: relative;
+}
+
+.slide-inner {
+  width: 100%;
+  max-width: 960px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+}
+
+.slide.visible .slide-inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide.visible .slide-inner > * {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: revealChild .6s cubic-bezier(.16,1,.3,1) forwards;
+}
+
+@keyframes revealChild {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide.visible .slide-inner > *:nth-child(1) { animation-delay: .05s; }
+.slide.visible .slide-inner > *:nth-child(2) { animation-delay: .13s; }
+.slide.visible .slide-inner > *:nth-child(3) { animation-delay: .21s; }
+.slide.visible .slide-inner > *:nth-child(4) { animation-delay: .29s; }
+.slide.visible .slide-inner > *:nth-child(5) { animation-delay: .37s; }
+.slide.visible .slide-inner > *:nth-child(6) { animation-delay: .45s; }
+.slide.visible .slide-inner > *:nth-child(7) { animation-delay: .53s; }
+.slide.visible .slide-inner > *:nth-child(8) { animation-delay: .61s; }
+.slide.visible .slide-inner > *:nth-child(9) { animation-delay: .69s; }
+.slide.visible .slide-inner > *:nth-child(10) { animation-delay: .77s; }
+
+/* ── Typography ── */
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.15; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.5rem, 3.5vw, 2.2rem); line-height: 1.2; margin-bottom: .6em; }
+h3 { font-family: var(--font-body); font-weight: 600; font-size: 1rem; letter-spacing: .02em; }
+
+.label {
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.muted { color: var(--text-muted); }
+
+/* ── Hero slide ── */
+.hero-box {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: clamp(32px, 5vw, 56px);
+  background: var(--surface);
+  text-align: center;
+}
+
+.hero-box h1 { margin: .4em 0 .5em; }
+
+.hero-bullets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  justify-content: center;
+  margin-top: 1.2em;
+  list-style: none;
+}
+
+.hero-bullets li {
+  font-size: .95rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-bullets li::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── Stack cards ── */
+.adv-stack { display: flex; flex-direction: column; gap: 14px; }
+
+.adv-card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  transition: box-shadow .25s;
+}
+
+.adv-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+
+.adv-card__label {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid var(--border);
+  background: rgba(0,0,0,.015);
+}
+
+.adv-card__label .num {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .08em;
+}
+
+.adv-card__label .title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.adv-card__body {
+  padding: 20px 24px;
+  font-size: .9rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.adv-card__body ul {
+  margin-top: 6px;
+  padding-left: 16px;
+}
+
+.adv-card__body ul li { margin-bottom: 3px; }
+
+/* ── Metric cards ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.kpi-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 20px 18px;
+  text-align: center;
+}
+
+.kpi-card .value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1.1;
+  margin: 6px 0 4px;
+}
+
+.kpi-card .desc {
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+.kpi-card.green .value { color: var(--green); }
+.kpi-card.red .value { color: var(--red); }
+.kpi-card.blue .value { color: var(--blue); }
+.kpi-card.teal .value { color: var(--teal); }
+.kpi-card.orange .value { color: var(--orange); }
+.kpi-card.purple .value { color: var(--purple); }
+
+/* ── Compare bars ── */
+.compare-section { margin-top: 18px; }
+
+.compare-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.compare-row .bar-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: .85rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.compare-bar {
+  flex: 1;
+  height: 32px;
+  background: var(--accent-light);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.compare-bar__fill {
+  height: 100%;
+  border-radius: 6px;
+  width: 0;
+  transition: width 1.2s cubic-bezier(.16,1,.3,1);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.slide.visible .compare-bar__fill { width: var(--w); }
+
+.fill-green { background: var(--green); }
+.fill-blue { background: var(--blue); }
+.fill-orange { background: var(--orange); }
+.fill-red { background: var(--red); }
+.fill-teal { background: var(--teal); }
+.fill-purple { background: var(--purple); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); }
+.badge-orange { background: var(--orange-bg); color: var(--orange); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-teal { background: var(--teal-bg); color: var(--teal); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); }
+
+/* ── Ticket cards ── */
+.ticket-grid { display: flex; flex-direction: column; gap: 14px; }
+
+.ticket-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 22px 26px;
+}
+
+.ticket-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ticket-card__id {
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ticket-card__title {
+  font-weight: 600;
+  font-size: .95rem;
+}
+
+.ticket-card__desc {
+  font-size: .88rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.55;
+}
+
+.ticket-card ul {
+  padding-left: 18px;
+  font-size: .85rem;
+  color: var(--text-muted);
+}
+
+.ticket-card ul li { margin-bottom: 4px; }
+
+/* ── Flow steps ── */
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.flow-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.flow-step__marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 36px;
+}
+
+.flow-step__dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.flow-step__line {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  min-height: 20px;
+}
+
+.flow-step:last-child .flow-step__line { display: none; }
+
+.flow-step__content {
+  padding-bottom: 22px;
+  flex: 1;
+}
+
+.flow-step__content h3 {
+  font-size: .92rem;
+  margin-bottom: 4px;
+}
+
+.flow-step__content p {
+  font-size: .85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Callout box ── */
+.callout {
+  border: 1.5px solid;
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-top: 16px;
+  font-size: .9rem;
+}
+
+.callout-green { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+.callout-blue { border-color: var(--blue); background: var(--blue-bg); color: var(--blue); }
+.callout-orange { border-color: var(--orange); background: var(--orange-bg); color: var(--orange); }
+.callout-teal { border-color: var(--teal); background: var(--teal-bg); }
+
+.callout strong { display: block; margin-bottom: 4px; }
+
+/* ── Two-column layout ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── Chrome ── */
+.progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  background: var(--accent);
+  z-index: 100;
+  transition: width .35s cubic-bezier(.16,1,.3,1);
+}
+
+.dot-nav {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 100;
+}
+
+.dot-nav button {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  transition: all .25s;
+  padding: 0;
+}
+
+.dot-nav button.active {
+  background: var(--accent);
+  transform: scale(1.5);
+}
+
+.slide-counter {
+  position: fixed;
+  bottom: 18px;
+  right: 24px;
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  color: var(--text-muted);
+  z-index: 100;
+}
+
+.hint {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  color: var(--text-muted);
+  opacity: 1;
+  transition: opacity 1s;
+  z-index: 100;
+}
+
+.hint.hide { opacity: 0; }
+
+/* ── Table ── */
+.clean-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .88rem;
+  margin-top: 12px;
+}
+
+.clean-table th {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border);
+}
+
+.clean-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.clean-table tr:last-child td { border-bottom: none; }
+
+.clean-table .mono {
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.clean-table .num-right {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.clean-table .total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--text);
+  border-bottom: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .adv-card { grid-template-columns: 1fr; }
+  .adv-card__label { border-right: none; border-bottom: 1px solid var(--border); padding: 14px 18px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .dot-nav { display: none; }
+  .compare-row .bar-label { width: 90px; font-size: .78rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .slide-inner { opacity: 1; transform: none; }
+  .slide-inner > * { opacity: 1; transform: none; }
+  .compare-bar__fill { width: var(--w) !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="dot-nav" id="dotNav"></nav>
+<div class="slide-counter" id="slideCounter"></div>
+<div class="hint" id="hint">Scroll or use arrow keys to navigate</div>
+
+<!-- ═══════════════════ SLIDE 1: TITLE ═══════════════════ -->
+<section class="slide" data-slide="0">
+  <div class="slide-inner">
+    <div class="hero-box">
+      <span class="label">Data Quality &bull; Q1 2026</span>
+      <h1>MLS Authorization<br>Bulk Cleanup</h1>
+      <p class="muted" style="font-size:1.05rem; max-width:600px; margin:0 auto;">
+        Cleaning up 11,521 misconfigured MLS authorization records across 2,658 companies in <code style="font-family:var(--font-mono); font-size:.9rem; background:var(--accent-light); padding:2px 7px; border-radius:4px;">identity.mls_authorization</code>
+      </p>
+      <ul class="hero-bullets">
+        <li>3,951 records automated</li>
+        <li>7,570 manual review</li>
+        <li>Soft delete &mdash; fully reversible</li>
+        <li>8 Linear tickets</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 2: THE PROBLEM ═══════════════════ -->
+<section class="slide" data-slide="1">
+  <div class="slide-inner">
+    <span class="label">The Problem</span>
+    <h2>Active authorizations with zero data flowing</h2>
+    <p class="muted" style="max-width:700px; margin-bottom:20px;">
+      Our MLS authorization audit found thousands of MLS IDs marked <strong style="color:var(--text)">ACTIVE</strong> in CMS but classified as <strong style="color:var(--red)">JUNK</strong>, <strong style="color:var(--red)">ORPHANED</strong>, or <strong style="color:var(--red)">NOT_FOUND_IN_LISTINGS</strong> in the data lake. These authorizations appear correctly configured but deliver nothing.
+    </p>
+    <div class="kpi-grid">
+      <div class="kpi-card red">
+        <span class="label">Total Records</span>
+        <div class="value">11,521</div>
+        <div class="desc">misconfigured auths</div>
+      </div>
+      <div class="kpi-card orange">
+        <span class="label">Companies</span>
+        <div class="value">2,658</div>
+        <div class="desc">affected accounts</div>
+      </div>
+      <div class="kpi-card blue">
+        <span class="label">Audit Source</span>
+        <div class="value">DAG</div>
+        <div class="desc">report_auth_audit_all_providers</div>
+      </div>
+      <div class="kpi-card teal">
+        <span class="label">Baseline</span>
+        <div class="value">Mar 27</div>
+        <div class="desc">2026 audit snapshot</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 3: TIER BREAKDOWN ═══════════════════ -->
+<section class="slide" data-slide="2">
+  <div class="slide-inner">
+    <span class="label">Classification</span>
+    <h2>Five tiers of misconfigured records</h2>
+    <div class="adv-stack">
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">TIER A</span>
+          <span class="title">Active Agent</span>
+        </div>
+        <div class="adv-card__body">
+          MLS ID matches an <strong>active</strong> agent profile in CMS. Requires human judgment &mdash; could be a false positive, stale ID, or wrong board.
+          <br><span class="badge badge-orange" style="margin-top:6px;">7,068 RECORDS &bull; MANUAL</span>
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">TIER B</span>
+          <span class="title">Deleted Agent</span>
+        </div>
+        <div class="adv-card__body">
+          MLS ID linked to a <strong>deleted</strong> agent profile. Agent removed from the company &mdash; authorization is residual config.
+          <br><span class="badge badge-green" style="margin-top:6px;">1,863 RECORDS &bull; SCRIPTED</span>
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">TIER C-1</span>
+          <span class="title">Test / Junk</span>
+        </div>
+        <div class="adv-card__body">
+          Obvious placeholder values: <code style="font-family:var(--font-mono); font-size:.82rem; background:var(--accent-light); padding:1px 5px; border-radius:3px;">test</code>, <code style="font-family:var(--font-mono); font-size:.82rem; background:var(--accent-light); padding:1px 5px; border-radius:3px;">123456</code>, <code style="font-family:var(--font-mono); font-size:.82rem; background:var(--accent-light); padding:1px 5px; border-radius:3px;">000000</code>. Entered during onboarding testing.
+          <br><span class="badge badge-green" style="margin-top:6px;">168 RECORDS &bull; SCRIPTED</span>
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">TIER C-2</span>
+          <span class="title">No Profiles</span>
+        </div>
+        <div class="adv-card__body">
+          Company has <strong>zero</strong> agent profiles in CMS. Completely orphaned &mdash; many are decommissioned or test accounts.
+          <br><span class="badge badge-green" style="margin-top:6px;">472 RECORDS &bull; SCRIPTED</span>
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">TIER C-3</span>
+          <span class="title">Orphaned</span>
+        </div>
+        <div class="adv-card__body">
+          Company has agents, but <strong>none</strong> linked to this MLS ID. Likely a typo during onboarding &mdash; correct auth added separately.
+          <br><span class="badge badge-green" style="margin-top:6px;">1,950 RECORDS &bull; SCRIPTED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 4: BY THE NUMBERS ═══════════════════ -->
+<section class="slide" data-slide="3">
+  <div class="slide-inner">
+    <span class="label">By the Numbers</span>
+    <h2>Automated vs. manual scope</h2>
+
+    <div class="compare-section">
+      <div class="compare-row">
+        <span class="bar-label">Tier B</span>
+        <div class="compare-bar">
+          <div class="compare-bar__fill fill-green" style="--w:47.8%">1,794 auto-delete</div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <span class="bar-label">Tier C-3</span>
+        <div class="compare-bar">
+          <div class="compare-bar__fill fill-teal" style="--w:42.3%">1,586 auto-delete</div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <span class="bar-label">Tier C-2</span>
+        <div class="compare-bar">
+          <div class="compare-bar__fill fill-blue" style="--w:9.3%">349</div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <span class="bar-label">Tier C-1</span>
+        <div class="compare-bar">
+          <div class="compare-bar__fill fill-purple" style="--w:1.5%"></div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <span class="bar-label">Demo Accounts</span>
+        <div class="compare-bar">
+          <div class="compare-bar__fill fill-orange" style="--w:5.3%">197</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="margin-top:28px;">
+      <div class="kpi-card green">
+        <span class="label">Automated</span>
+        <div class="value">3,754</div>
+        <div class="desc">safe to script</div>
+      </div>
+      <div class="kpi-card orange">
+        <span class="label">Demo Cleanup</span>
+        <div class="value">197</div>
+        <div class="desc">internal accounts</div>
+      </div>
+      <div class="kpi-card blue">
+        <span class="label">Manual Review</span>
+        <div class="value">7,570</div>
+        <div class="desc">IDX + DCT team</div>
+      </div>
+      <div class="kpi-card purple">
+        <span class="label">Excluded</span>
+        <div class="value">699</div>
+        <div class="desc">sole-auth / wrong-board</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 5: EXCLUSION LOGIC ═══════════════════ -->
+<section class="slide" data-slide="4">
+  <div class="slide-inner">
+    <span class="label">Safety Rails</span>
+    <h2>What we're <em>not</em> touching automatically</h2>
+    <p class="muted" style="max-width:680px; margin-bottom:20px;">
+      699 records are excluded from automatic cleanup even though they fall in Tiers B/C. These require human review because deletion could impact live IDX access.
+    </p>
+    <div class="adv-stack">
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">451</span>
+          <span class="title">Sole Auth</span>
+        </div>
+        <div class="adv-card__body">
+          Only active authorization for this company on this MLS feed. Deleting would <strong>kill IDX / home search</strong> for that entire board. Must verify the company doesn't need this feed first.
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">124</span>
+          <span class="title">Cross-Company</span>
+        </div>
+        <div class="adv-card__body">
+          MLS ID found in a <strong>different company's</strong> agent profiles. Suggests an agent moved companies or a fat-fingered ID. IDX team must verify correct ownership.
+        </div>
+      </div>
+      <div class="adv-card">
+        <div class="adv-card__label">
+          <span class="num">124</span>
+          <span class="title">Wrong Board</span>
+        </div>
+        <div class="adv-card__body">
+          MLS ID is valid on a <strong>different MLS board</strong> for the same company. These are reconnect candidates, not deletions &mdash; auth needs to point to the correct feed.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 6: APPROACH ═══════════════════ -->
+<section class="slide" data-slide="5">
+  <div class="slide-inner">
+    <span class="label">Approach</span>
+    <h2>Soft delete with full backup</h2>
+    <p class="muted" style="max-width:680px; margin-bottom:20px;">
+      Per Daniel and Frank (confirmed April 14) &mdash; the table supports soft delete via a <code style="font-family:var(--font-mono); font-size:.88rem; background:var(--accent-light); padding:2px 6px; border-radius:4px;">deleted_at</code> timestamp column. No rows are permanently removed.
+    </p>
+    <div class="two-col">
+      <div class="ticket-card">
+        <div class="ticket-card__header">
+          <span style="font-size:1.3rem;">&#x1f6e1;&#xfe0f;</span>
+          <span class="ticket-card__title">Cleanup Method</span>
+        </div>
+        <div class="ticket-card__desc">
+          All deletion tickets use <strong>UPDATE</strong> instead of DELETE:
+        </div>
+        <div style="background:#1a1710; color:#e8e4db; padding:14px 16px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:.78rem; line-height:1.65; overflow-x:auto;">
+          <span style="color:#9a7b2d;">UPDATE</span> identity.mls_authorization<br>
+          <span style="color:#9a7b2d;">SET</span> deleted_at = <span style="color:#6bba7b;">NOW()</span>,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;status = <span style="color:#6bba7b;">'DELETED'</span><br>
+          <span style="color:#9a7b2d;">WHERE</span> id <span style="color:#9a7b2d;">IN</span> (<span style="color:#888;">...</span>);
+        </div>
+      </div>
+      <div class="ticket-card">
+        <div class="ticket-card__header">
+          <span style="font-size:1.3rem;">&#x1f504;</span>
+          <span class="ticket-card__title">Rollback</span>
+        </div>
+        <div class="ticket-card__desc">
+          Any record can be restored instantly by undoing the soft delete:
+        </div>
+        <div style="background:#1a1710; color:#e8e4db; padding:14px 16px; border-radius:var(--radius-sm); font-family:var(--font-mono); font-size:.78rem; line-height:1.65; overflow-x:auto;">
+          <span style="color:#9a7b2d;">UPDATE</span> identity.mls_authorization<br>
+          <span style="color:#9a7b2d;">SET</span> deleted_at = <span style="color:#6bba7b;">NULL</span>,<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;status = <span style="color:#6bba7b;">'ACTIVE'</span><br>
+          <span style="color:#9a7b2d;">WHERE</span> company_id = <span style="color:#888;">...</span>;
+        </div>
+      </div>
+    </div>
+    <div class="callout callout-green" style="margin-top:18px;">
+      <strong>Backup table created regardless</strong>
+      <code style="font-family:var(--font-mono); font-size:.82rem;">data_monitoring.mls_authorization_cleanup_backup_20260414</code> &mdash; full snapshot of all 4,453 in-scope records before any changes are made.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 7: LINEAR TICKETS ═══════════════════ -->
+<section class="slide" data-slide="6">
+  <div class="slide-inner">
+    <span class="label">Execution Plan</span>
+    <h2>8 tickets, sequenced for safety</h2>
+    <table class="clean-table">
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Scope</th>
+          <th>Records</th>
+          <th>Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">DATA-4952</span></td>
+          <td>Back up all targeted records</td>
+          <td class="num-right">4,453</td>
+          <td><span class="badge badge-blue">BACKUP</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4953</span></td>
+          <td>Tier C-1 &mdash; Test / junk MLS IDs</td>
+          <td class="num-right">25</td>
+          <td><span class="badge badge-green">SCRIPT</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4954</span></td>
+          <td>Tier C-2 &mdash; No agent profiles</td>
+          <td class="num-right">349</td>
+          <td><span class="badge badge-green">SCRIPT</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4955</span></td>
+          <td>Tier C-3 &mdash; Orphaned auths</td>
+          <td class="num-right">1,586</td>
+          <td><span class="badge badge-green">SCRIPT</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4956</span></td>
+          <td>Tier B &mdash; Deleted agent profiles</td>
+          <td class="num-right">1,794</td>
+          <td><span class="badge badge-green">SCRIPT</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4957</span></td>
+          <td>Post-cleanup verification + CS notify</td>
+          <td class="num-right">&mdash;</td>
+          <td><span class="badge badge-purple">VERIFY</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4958</span></td>
+          <td>Manual review &mdash; IDX + DCT</td>
+          <td class="num-right">7,570</td>
+          <td><span class="badge badge-orange">MANUAL</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">DATA-4959</span></td>
+          <td>Demo / internal account cleanup</td>
+          <td class="num-right">197</td>
+          <td><span class="badge badge-green">SCRIPT</span></td>
+        </tr>
+        <tr class="total-row">
+          <td></td>
+          <td><strong>Grand Total</strong></td>
+          <td class="num-right">11,521</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ SLIDE 8: NEXT STEPS ═══════════════════ -->
+<section class="slide" data-slide="7">
+  <div class="slide-inner">
+    <span class="label">Next Steps</span>
+    <h2>Path to execution</h2>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step__marker">
+          <div class="flow-step__dot"></div>
+          <div class="flow-step__line"></div>
+        </div>
+        <div class="flow-step__content">
+          <h3>CS Runbook &amp; Alignment</h3>
+          <p>Frank Lopez reaches out to the CS team and comes up with a runbook. Extended CS leadership needs visibility into all changes in case of customer escalations.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step__marker">
+          <div class="flow-step__dot" style="background:var(--orange);"></div>
+          <div class="flow-step__line"></div>
+        </div>
+        <div class="flow-step__content">
+          <h3>Leadership Green Light</h3>
+          <p>Execution timing is dependent on CS and leadership alignment &mdash; particularly around the <strong>Omnipresence launch window</strong>. We execute when leadership gives the go-ahead.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step__marker">
+          <div class="flow-step__dot" style="background:var(--blue);"></div>
+          <div class="flow-step__line"></div>
+        </div>
+        <div class="flow-step__content">
+          <h3>Data Team: Backup + Automated Scripts</h3>
+          <p>Create the backup table first (DATA-4952), then execute soft-delete scripts for Tiers C-1, C-2, C-3, B, and demo accounts (DATA-4953 &ndash; 4956, 4959). Total: 3,951 records.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step__marker">
+          <div class="flow-step__dot" style="background:var(--teal);"></div>
+          <div class="flow-step__line"></div>
+        </div>
+        <div class="flow-step__content">
+          <h3>IDX + DCT: Manual Review</h3>
+          <p>Frank's team continues manual review of 7,570 records (DATA-4958). Tier A active agent records, sole-auth exclusions, cross-company matches, and wrong-board candidates.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-step__marker">
+          <div class="flow-step__dot" style="background:var(--green);"></div>
+        </div>
+        <div class="flow-step__content">
+          <h3>Verification &amp; CS Notification</h3>
+          <p>Re-run the audit DAG, verify expected reduction, and prepare the CS leadership notification with escalation paths and backup locations (DATA-4957).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-blue" style="margin-top:10px;">
+      <strong>Escalation path:</strong>
+      CS complaint &#8594; check deletion log &#8594; undo soft delete &#8594; notify IDX / DCT team &#8594; Raj Vegulla &amp; Frank Lopez
+    </div>
+  </div>
+</section>
+
+<script>
+class SlideEngine {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.current = 0;
+    this.total = this.slides.length;
+    this.progressBar = document.getElementById('progressBar');
+    this.dotNav = document.getElementById('dotNav');
+    this.counter = document.getElementById('slideCounter');
+    this.hint = document.getElementById('hint');
+
+    this.buildDots();
+    this.observeSlides();
+    this.bindKeys();
+    this.bindTouch();
+    this.update();
+
+    setTimeout(() => this.hint.classList.add('hide'), 4000);
+  }
+
+  buildDots() {
+    this.slides.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.setAttribute('aria-label', `Slide ${i + 1}`);
+      btn.addEventListener('click', () => this.goTo(i));
+      this.dotNav.appendChild(btn);
+    });
+  }
+
+  observeSlides() {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          this.current = +e.target.dataset.slide;
+          this.update();
+        }
+      });
+    }, { threshold: 0.5 });
+    this.slides.forEach(s => obs.observe(s));
+  }
+
+  bindKeys() {
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); this.next(); }
+      if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); this.prev(); }
+      if (e.key === 'Home') { e.preventDefault(); this.goTo(0); }
+      if (e.key === 'End') { e.preventDefault(); this.goTo(this.total - 1); }
+      this.hint.classList.add('hide');
+    });
+  }
+
+  bindTouch() {
+    let startY = 0;
+    document.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const diff = startY - e.changedTouches[0].clientY;
+      if (Math.abs(diff) > 50) diff > 0 ? this.next() : this.prev();
+      this.hint.classList.add('hide');
+    }, { passive: true });
+  }
+
+  goTo(i) { this.slides[i]?.scrollIntoView({ behavior: 'smooth' }); }
+  next() { this.goTo(Math.min(this.current + 1, this.total - 1)); }
+  prev() { this.goTo(Math.max(this.current - 1, 0)); }
+
+  update() {
+    this.progressBar.style.width = `${((this.current + 1) / this.total) * 100}%`;
+    this.counter.textContent = `${this.current + 1} / ${this.total}`;
+    [...this.dotNav.children].forEach((d, i) => d.classList.toggle('active', i === this.current));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => new SlideEngine());
+</script>
+</body>
+</html>
