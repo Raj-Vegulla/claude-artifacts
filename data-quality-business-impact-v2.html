@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Quality Monitoring — Business Impact Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f5ed;
+  --surface: #ffffff;
+  --text: #1a1710;
+  --text-dim: #6b6354;
+  --accent: #9a7b2d;
+  --accent-dim: rgba(154, 123, 45, 0.08);
+  --border: rgba(60, 50, 30, 0.1);
+  --green: #3d7a45;
+  --green-dim: rgba(61, 122, 69, 0.08);
+  --red: #b54040;
+  --red-dim: rgba(181, 64, 64, 0.08);
+  --blue: #3b6fa0;
+  --blue-dim: rgba(59, 111, 160, 0.08);
+  --teal: #2a7a6f;
+  --teal-dim: rgba(42, 122, 111, 0.08);
+  --orange: #b56a20;
+  --orange-dim: rgba(181, 106, 32, 0.08);
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Progress bar */
+.progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  background: var(--accent);
+  z-index: 1000;
+  transition: width 0.4s var(--ease);
+}
+
+/* Dot nav */
+.dot-nav {
+  position: fixed;
+  right: clamp(12px, 2vw, 24px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999;
+}
+.dot-nav button {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(60, 50, 30, 0.2);
+  cursor: pointer;
+  transition: all 0.3s var(--ease);
+  padding: 0;
+}
+.dot-nav button.active {
+  background: var(--accent);
+  transform: scale(1.5);
+}
+
+/* Slide counter */
+.slide-counter {
+  position: fixed;
+  bottom: 20px; right: clamp(12px, 2vw, 24px);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  z-index: 999;
+}
+
+/* Slides */
+.slide {
+  min-height: 100dvh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(32px, 5vh, 64px) clamp(36px, 7vw, 100px);
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+}
+.slide.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.slide .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.slide.visible .reveal:nth-child(1) { transition-delay: 0.08s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.16s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.24s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.32s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.40s; }
+.slide.visible .reveal:nth-child(6) { transition-delay: 0.48s; }
+.slide.visible .reveal:nth-child(7) { transition-delay: 0.56s; }
+.slide.visible .reveal:nth-child(8) { transition-delay: 0.64s; }
+.slide.visible .reveal:nth-child(9) { transition-delay: 0.72s; }
+
+/* Typography */
+.display-heading {
+  font-family: var(--font-display);
+  font-size: clamp(44px, 9vw, 96px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+}
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4.5vw, 44px);
+  line-height: 1.15;
+  font-weight: 400;
+}
+.body-text {
+  font-size: clamp(14px, 1.8vw, 18px);
+  line-height: 1.65;
+  color: var(--text-dim);
+  max-width: 680px;
+}
+.label {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1vw, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* KPI strip */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 32px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  text-align: center;
+}
+.kpi-number {
+  font-family: var(--font-mono);
+  font-size: clamp(22px, 3.5vw, 40px);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+.kpi-label {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1vw, 11px);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+.card-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+}
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.badge-teal { background: var(--teal-dim); color: var(--teal); }
+.badge-accent { background: var(--accent-dim); color: var(--accent); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+
+/* Impact bar */
+.impact-bar-container { margin-top: 12px; }
+.impact-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.impact-bar-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 100px;
+  text-align: right;
+}
+.impact-bar-track {
+  flex: 1;
+  height: 24px;
+  background: rgba(60, 50, 30, 0.05);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.impact-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  width: 0;
+  transition: width 1s var(--ease);
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+}
+.slide.visible .impact-bar-fill { width: var(--w); }
+.impact-bar-fill span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+
+/* Alert type table */
+.alert-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+.alert-table th, .alert-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: clamp(12px, 1.5vw, 15px);
+}
+.alert-table th {
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1vw, 11px);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.alert-table td:nth-child(2), .alert-table th:nth-child(2) { text-align: center; }
+.alert-table td:nth-child(3), .alert-table th:nth-child(3) { text-align: center; }
+
+/* Timeline */
+.timeline { margin-top: 20px; position: relative; padding-left: 24px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px; top: 4px; bottom: 4px;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item { position: relative; margin-bottom: 20px; }
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -24px; top: 6px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+}
+.timeline-item .tl-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.timeline-item .tl-text {
+  font-size: clamp(13px, 1.6vw, 16px);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* Incident card */
+.incident-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.incident-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+/* Stat inline */
+.stat-inline {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: clamp(18px, 2.5vw, 28px);
+  font-weight: 600;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Two-col layout */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Outcome list */
+.outcome-list { list-style: none; margin-top: 16px; }
+.outcome-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: clamp(13px, 1.6vw, 16px);
+  line-height: 1.5;
+  display: flex;
+  gap: 12px;
+}
+.outcome-list li .icon { flex-shrink: 0; font-size: 18px; }
+
+/* Divider */
+.divider {
+  width: 48px;
+  height: 2px;
+  background: var(--accent);
+  margin: 16px 0;
+}
+
+.slide-accent-line {
+  width: 48px;
+  height: 3px;
+  background: var(--accent);
+  margin-bottom: 16px;
+  border-radius: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .card-grid, .two-col { grid-template-columns: 1fr; }
+  .card-grid-3 { grid-template-columns: 1fr; }
+  .dot-nav { display: none; }
+  .impact-bar-label { min-width: 70px; font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide .reveal, .impact-bar-fill { transition: none !important; }
+  .slide { opacity: 1; transform: none; }
+  .slide .reveal { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="dot-nav" id="dotNav"></nav>
+<div class="slide-counter" id="slideCounter"></div>
+
+<!-- SLIDE 1: Title -->
+<section class="slide" id="s0">
+  <div class="reveal label" style="margin-bottom: 12px;">Product Review &middot; April 2026</div>
+  <h1 class="reveal display-heading">Data Quality<br>Monitoring</h1>
+  <div class="reveal divider" style="margin: 24px 0;"></div>
+  <p class="reveal body-text">Business impact of proactive alerting over the past four weeks.<br>March 18 – April 15, 2026.</p>
+  <div class="reveal" style="margin-top: 40px;">
+    <span class="label" style="opacity: 0.5;">↓ scroll to navigate</span>
+  </div>
+</section>
+
+<!-- SLIDE 2: Headline KPIs -->
+<section class="slide" id="s1">
+  <div class="reveal label">At a Glance</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">4-Week Summary</h2>
+  <div class="kpi-strip reveal">
+    <div class="kpi-card">
+      <div class="kpi-number">73</div>
+      <div class="kpi-label">Total Alerts</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number">45</div>
+      <div class="kpi-label">Actionable &amp; Triaged</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number">80+</div>
+      <div class="kpi-label">Companies Investigated</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number">200+</div>
+      <div class="kpi-label">Listings Verified</div>
+    </div>
+  </div>
+  <p class="reveal body-text" style="margin-top: 24px;">Every actionable alert was triaged within the same business day. The system is catching real data issues before they reach customers.</p>
+</section>
+
+<!-- SLIDE 3: Alert Breakdown -->
+<section class="slide" id="s2">
+  <div class="reveal label">Alert Categories</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">What the system monitors</h2>
+  <div class="reveal card" style="margin-top: 24px; overflow-x: auto;">
+    <table class="alert-table">
+      <thead>
+        <tr><th>Alert Type</th><th>Count</th><th>Action Required?</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CMS Listing Status Change</td><td>26</td><td><span class="badge badge-accent">Investigated Daily</span></td></tr>
+        <tr><td>CMS Image Audit (all clear)</td><td>28</td><td><span class="badge badge-green">FYI Only</span></td></tr>
+        <tr><td>CMS Image Audit (issues)</td><td>1</td><td><span class="badge badge-red">Active Investigation</span></td></tr>
+        <tr><td>Data Quality — Enriched Fields</td><td>13</td><td><span class="badge badge-orange">Root Cause Analysis</span></td></tr>
+        <tr><td>CMS ↔ DataLake Status Audit</td><td>1</td><td><span class="badge badge-blue">Systemic Tracking</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="reveal body-text" style="margin-top: 16px;">28 of 73 alerts were green "all clear" image audits. The remaining 45 were actionable — all triaged same-day.</p>
+</section>
+
+<!-- SLIDE 4: Impact at Scale -->
+<section class="slide" id="s3">
+  <div class="reveal label">Scale of Impact</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">What we're protecting</h2>
+  <div class="reveal impact-bar-container" style="margin-top: 32px;">
+    <div class="impact-bar-row">
+      <div class="impact-bar-label">CMS ↔ DL<br>Mismatches</div>
+      <div class="impact-bar-track">
+        <div class="impact-bar-fill" style="--w: 95%; background: var(--red);"><span>39,286 listings</span></div>
+      </div>
+    </div>
+    <div class="impact-bar-row">
+      <div class="impact-bar-label">Companies<br>w/ Mismatches</div>
+      <div class="impact-bar-track">
+        <div class="impact-bar-fill" style="--w: 72%; background: var(--orange);"><span>3,838 companies</span></div>
+      </div>
+    </div>
+    <div class="impact-bar-row">
+      <div class="impact-bar-label">UPID<br>Gaps</div>
+      <div class="impact-bar-track">
+        <div class="impact-bar-fill" style="--w: 35%; background: var(--blue);"><span>1,237 records · 4 feeds</span></div>
+      </div>
+    </div>
+    <div class="impact-bar-row">
+      <div class="impact-bar-label">Missing<br>Photos</div>
+      <div class="impact-bar-track">
+        <div class="impact-bar-fill" style="--w: 22%; background: var(--teal);"><span>8–163 listings · 3 feeds</span></div>
+      </div>
+    </div>
+    <div class="impact-bar-row">
+      <div class="impact-bar-label">Listings<br>Saved</div>
+      <div class="impact-bar-track">
+        <div class="impact-bar-fill" style="--w: 15%; background: var(--green);"><span>2 confirmed fixed + 44 verified</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: Incident 1 — Property Estimates -->
+<section class="slide" id="s4">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--red-dim); color: var(--red);">🚨</div>
+      <div>
+        <div class="label">Incident — Customer-Facing Fix</div>
+        <h2 class="section-heading">Property Estimates</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="slide-accent-line"></div>
+      <p class="body-text" style="max-width: 100%;">2 active listings were incorrectly marked <strong style="color: var(--red);">INACTIVE in CMS</strong> while still <strong style="color: var(--green);">ACTIVE in the API</strong>. These live listings would have been invisible on the client's website.</p>
+      <div class="stat-inline" style="margin-top: 20px;">
+        <div class="stat-item"><div class="stat-value" style="color: var(--red);">2</div><div class="stat-label">Listings Hidden</div></div>
+        <div class="stat-item"><div class="stat-value">1</div><div class="stat-label">Customer</div></div>
+        <div class="stat-item"><div class="stat-value">1</div><div class="stat-label">Feed</div></div>
+      </div>
+    </div>
+    <div class="reveal card">
+      <div class="badge badge-green">Resolved</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-date">Mar 27 03:06</div>
+          <div class="tl-text">Status change alert fires — 25% of listings flipped</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Mar 27 13:26</div>
+          <div class="tl-text">Ryan identifies CMS/API mismatch on 2 listings</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Mar 27 14:48</div>
+          <div class="tl-text"><strong>Fixed</strong> — cleanup + full sync jobs re-run, statuses corrected</div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-dim); margin-top: 12px;"><strong>Root cause:</strong> Cleanup process retained inactive record as "latest" in CMS.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 6: Incident 2 — Team Jordan -->
+<section class="slide" id="s5">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--accent-dim); color: var(--accent);">🔍</div>
+      <div>
+        <div class="label">Incident — Proactive Verification</div>
+        <h2 class="section-heading">Team Jordan</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="slide-accent-line"></div>
+      <p class="body-text" style="max-width: 100%;">85.4% of listings (41 of 48) changed to INACTIVE in 24 hours — an alarming spike. The alert triggered an immediate full cross-system audit.</p>
+      <div class="stat-inline" style="margin-top: 20px;">
+        <div class="stat-item"><div class="stat-value">44</div><div class="stat-label">Listings Verified</div></div>
+        <div class="stat-item"><div class="stat-value" style="color: var(--green);">0</div><div class="stat-label">Pipeline Errors</div></div>
+      </div>
+      <p class="body-text" style="margin-top: 16px; max-width: 100%;">All 44 listings genuinely removed by the MLS provider. Confirmed across API, DataLake, and CMS — no pipeline error. Without monitoring, this would have generated a false support ticket.</p>
+    </div>
+    <div class="reveal card">
+      <div class="badge badge-green">Verified — No Error</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-date">Apr 9–10</div>
+          <div class="tl-text">Two consecutive alerts flag Team Jordan at 85% and 66% flip rates</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Apr 10 09:23</div>
+          <div class="tl-text">Terri confirms all 44 listings gone from API</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Apr 10 10:51</div>
+          <div class="tl-text">Full audit: API vs. DL vs. CMS — all consistent. Legitimate MLS removal.</div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-dim); margin-top: 12px;"><strong>Outcome:</strong> Flagged as candidate for automated cross-system checks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: Incident 3 — Photo Pipeline Bug -->
+<section class="slide" id="s6">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--orange-dim); color: var(--orange);">📷</div>
+      <div>
+        <div class="label">Incident — Systemic Bug Discovery</div>
+        <h2 class="section-heading">Photo Pipeline — partial_sync</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="slide-accent-line"></div>
+      <p class="body-text" style="max-width: 100%;">Recurring alerts (3× in 5 days) flagged 5–6% of <code style="font-family: var(--font-mono); background: var(--accent-dim); padding: 2px 6px; border-radius: 4px; font-size: 13px;">mlsmatrix-pillarnine</code> records with NULL lp_photos.</p>
+      <p class="body-text" style="margin-top: 12px; max-width: 100%;">Multi-day investigation revealed that <code style="font-family: var(--font-mono); background: var(--red-dim); padding: 2px 6px; border-radius: 4px; font-size: 13px;">partial_sync</code> intermittently drops photo data. The latest record overwrites good data with empty lp_photos.</p>
+      <div class="stat-inline" style="margin-top: 20px;">
+        <div class="stat-item"><div class="stat-value" style="color: var(--orange);">8</div><div class="stat-label">Active Listings<br>Missing Photos</div></div>
+        <div class="stat-item"><div class="stat-value">108</div><div class="stat-label">Total Flagged</div></div>
+        <div class="stat-item"><div class="stat-value">1</div><div class="stat-label">Feed</div></div>
+      </div>
+    </div>
+    <div class="reveal card">
+      <div class="badge badge-orange">Under Investigation</div>
+      <p style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">Root cause narrowed: <strong>not</strong> Media or EMT enrichment. The streaming/sync pipeline is the source. Once fixed, this prevents photo loss across <em>all feeds</em> using the same mechanism.</p>
+      <div style="background: var(--orange-dim); border-radius: 8px; padding: 14px 16px;">
+        <div class="label" style="color: var(--orange); margin-bottom: 6px;">Why this matters</div>
+        <p style="font-size: 13px; line-height: 1.5;">Photos are the #1 element on listing pages. Missing photos = degraded UX for agents and their clients.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: More Enriched Field Issues -->
+<section class="slide" id="s7">
+  <div class="reveal label">Enriched Fields</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">Additional Data Quality Alerts</h2>
+  <div class="card-grid-3 reveal">
+    <div class="card">
+      <div class="badge badge-teal">No Impact</div>
+      <h3 style="font-size: 16px; margin-bottom: 8px;">trestle-khpar Photos</h3>
+      <div class="stat-value" style="font-size: 28px;">94.3%</div>
+      <div class="stat-label" style="margin-bottom: 12px;">Records with NULL lp_photos</div>
+      <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">1,032 of 1,094 records flagged. Investigation confirmed <strong>false positive</strong> — all records either inactive or photos populated by subsequent sync. Timing issue in monitoring window.</p>
+    </div>
+    <div class="card">
+      <div class="badge badge-blue">4 Feeds Affected</div>
+      <h3 style="font-size: 16px; margin-bottom: 8px;">UPID NULL — Geocoding Failure</h3>
+      <div class="stat-value" style="font-size: 28px;">1,237</div>
+      <div class="stat-label" style="margin-bottom: 12px;">Records Missing UPID</div>
+      <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">cws-bright (992), spark-swmric (129), cws-rgar (94), trestle-swmt (22). Geocoding API failed to return address components. Runbook updated with corrected queries.</p>
+    </div>
+    <div class="card">
+      <div class="badge badge-orange">9 Listings Confirmed</div>
+      <h3 style="font-size: 16px; margin-bottom: 8px;">cws-mlsl Photos</h3>
+      <div class="stat-value" style="font-size: 28px;">163</div>
+      <div class="stat-label" style="margin-bottom: 12px;">Listings Potentially Affected</div>
+      <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">7.9% of records had NULL photos. 9 confirmed with photos in API but missing in DataLake. Investigation into alternative photo sources initiated.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: S3 Image Audit -->
+<section class="slide" id="s8">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--red-dim); color: var(--red);">🪣</div>
+      <div>
+        <div class="label">Incident — Infrastructure Finding</div>
+        <h2 class="section-heading">S3 Image Inconsistency</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="slide-accent-line"></div>
+      <p class="body-text" style="max-width: 100%;">Image audit flagged 34 missing images across 24 properties in 2 feeds. Investigation uncovered a deeper infrastructure issue.</p>
+      <div class="stat-inline" style="margin-top: 20px;">
+        <div class="stat-item"><div class="stat-value">34</div><div class="stat-label">Images Missing<br>from S3</div></div>
+        <div class="stat-item"><div class="stat-value">24</div><div class="stat-label">Properties</div></div>
+        <div class="stat-item"><div class="stat-value">2</div><div class="stat-label">Feeds</div></div>
+      </div>
+    </div>
+    <div class="reveal card">
+      <div class="badge badge-red">Active — Escalated</div>
+      <div style="background: var(--red-dim); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
+        <div class="label" style="color: var(--red); margin-bottom: 6px;">Key Finding</div>
+        <p style="font-size: 13px; line-height: 1.5;"><strong>Tracy Kalama:</strong> Images appear on CMS dashboard but do <em>not</em> exist in S3. This means images are being served from an unknown/inconsistent source — creating fragility.</p>
+      </div>
+      <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;"><strong>Keller Williams NYC:</strong> 31 missing images across 23 properties on trestle_rebny. Some properties password-protected. Escalated to engineering to identify the alternative image-serving path.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: CMS ↔ DataLake — The 39K Problem -->
+<section class="slide" id="s9">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--red-dim); color: var(--red);">⚖️</div>
+      <div>
+        <div class="label">Biggest Finding — Abandoned Listings</div>
+        <h2 class="section-heading">The 39K Listing Problem</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="kpi-strip" style="grid-template-columns: 1fr 1fr; margin-top: 0;">
+        <div class="kpi-card">
+          <div class="kpi-number" style="color: var(--red);">~39,000</div>
+          <div class="kpi-label">Listings Not<br>Correctly Syncing</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-number" style="color: var(--orange);">3,838</div>
+          <div class="kpi-label">Companies<br>Affected</div>
+        </div>
+      </div>
+      <p class="body-text" style="margin-top: 20px; max-width: 100%;">The CMS ↔ DataLake weekly audit surfaced the <strong>largest-scale data integrity issue</strong> currently being tracked. These are "abandoned listings" that fall into two distinct root causes.</p>
+    </div>
+    <div class="reveal">
+      <div class="card" style="margin-bottom: 16px; border-left: 3px solid var(--accent);">
+        <div class="badge badge-accent">Lower Severity</div>
+        <h3 style="font-size: 16px; margin-bottom: 8px;">Category 1: Inactive Agent, Unarchived Listings</h3>
+        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">Agent no longer active (left brokerage, license expired), but their listings were never cleaned up from CMS. These are orphaned records — they sit on the client's website but cause <strong>no active harm</strong>. They need to be archived.</p>
+      </div>
+      <div class="card" style="border-left: 3px solid var(--red);">
+        <div class="badge badge-red">High Severity</div>
+        <h3 style="font-size: 16px; margin-bottom: 8px;">Category 2: Agent ID Drift from MLS Migrations</h3>
+        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.5;">During MLS migrations, agent IDs changed but CMS was not updated. Result: <strong>MLS sync is on, but no updates are flowing.</strong> The agent believes their listings are syncing — they are not. This is a <strong>silent failure</strong> that was generating support tickets.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 11: Abandoned Listings — Path Forward -->
+<section class="slide" id="s9b">
+  <div class="reveal">
+    <div class="incident-header">
+      <div class="incident-icon" style="background: var(--blue-dim); color: var(--blue);">🛤️</div>
+      <div>
+        <div class="label">Remediation Status</div>
+        <h2 class="section-heading">Abandoned Listings — Path Forward</h2>
+      </div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="reveal">
+      <div class="slide-accent-line"></div>
+      <div style="background: var(--red-dim); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+        <div class="label" style="color: var(--red); margin-bottom: 6px;">Why this matters</div>
+        <p style="font-size: 13px; line-height: 1.5;">Category 2 listings create a <strong>silent failure</strong> — the client and agent believe sync is working, but listing updates are not flowing. This erodes trust and generates avoidable support tickets like "my listing is not updated."</p>
+      </div>
+      <div style="background: var(--green-dim); border-radius: 8px; padding: 14px 16px;">
+        <div class="label" style="color: var(--green); margin-bottom: 6px;">What we have today</div>
+        <p style="font-size: 13px; line-height: 1.5;">A <strong>manual archival tool</strong> already exists. The DCT and Data teams use it today — they check the authorization report, confirm the agent is inactive/junk, and archive the listing. This is working, but it does not scale to ~39,000 listings.</p>
+      </div>
+    </div>
+    <div class="reveal card">
+      <div class="badge badge-blue">In Discussion</div>
+      <div class="label" style="margin-bottom: 12px;">Remediation Roadmap</div>
+      <div class="timeline" style="margin-top: 0;">
+        <div class="timeline-item">
+          <div class="tl-date">Done</div>
+          <div class="tl-text"><strong>Visibility:</strong> Full scope quantified — ~39K listings, 3,838 companies</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Done</div>
+          <div class="tl-text"><strong>Root causes identified:</strong> Inactive agents + agent ID drift from migrations</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Done</div>
+          <div class="tl-text"><strong>Manual tool exists:</strong> Can archive listings after verification</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Next</div>
+          <div class="tl-text"><strong>Define qualifying criteria</strong> for automated archival (similar to Auth Audit approach)</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">Next</div>
+          <div class="tl-text"><strong>Automate cleanup</strong> where possible; manual review for edge cases</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 11: Daily Discipline -->
+<section class="slide" id="s10">
+  <div class="reveal label">Operational Discipline</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">26 daily alerts — all triaged same-day</h2>
+  <div class="two-col reveal" style="margin-top: 24px;">
+    <div>
+      <p class="body-text" style="max-width: 100%;">Every day the CMS Listing Status Change monitor fires, flagging companies where ≥15% of listings changed status. The on-call team verifies each one against the API to confirm the change is MLS-driven — not a pipeline error.</p>
+      <div class="stat-inline" style="margin-top: 24px;">
+        <div class="stat-item"><div class="stat-value">26</div><div class="stat-label">Daily Alerts</div></div>
+        <div class="stat-item"><div class="stat-value">80+</div><div class="stat-label">Companies Checked</div></div>
+        <div class="stat-item"><div class="stat-value">200+</div><div class="stat-label">Listings Verified</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label" style="margin-bottom: 12px;">Typical Daily Pattern</div>
+      <div class="timeline" style="margin-top: 0;">
+        <div class="timeline-item">
+          <div class="tl-date">~03:00 CDT</div>
+          <div class="tl-text">Alert fires automatically</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">~08:30 CDT</div>
+          <div class="tl-text">On-call reviews flagged companies</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-date">~09:00 CDT</div>
+          <div class="tl-text">Verified against API — ✅ marked</div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-dim); margin-top: 12px;">On-call rotation: Ryan Gordola (wk 1–2) → Terri Buenaflor (wk 3–4)</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 12: What Early Detection Achieved -->
+<section class="slide" id="s11">
+  <div class="reveal label">Business Value</div>
+  <h2 class="reveal section-heading" style="margin-top: 8px;">What early detection achieved</h2>
+  <ul class="outcome-list reveal" style="max-width: 800px;">
+    <li>
+      <span class="icon">📊</span>
+      <div><strong>Surfaced the 39K abandoned listings problem with clear root causes</strong> — inactive agents with unarchived listings (clutter) and agent ID drift from migrations (silent sync failures). Full scope quantified, manual tool exists, automated cleanup path defined.</div>
+    </li>
+    <li>
+      <span class="icon">🛡️</span>
+      <div><strong>Prevented customer-facing listing disappearances</strong> — Property Estimates had 2 active listings incorrectly hidden. Caught and fixed within hours, not days.</div>
+    </li>
+    <li>
+      <span class="icon">🔬</span>
+      <div><strong>Identified a systemic sync pipeline bug</strong> — partial_sync intermittently drops photo data. Once fixed, prevents photo loss across all feeds using the same mechanism.</div>
+    </li>
+    <li>
+      <span class="icon">🪣</span>
+      <div><strong>Caught an S3/CMS image inconsistency</strong> — images appearing in CMS without existing in S3. Fragile image-serving path escalated to engineering.</div>
+    </li>
+    <li>
+      <span class="icon">✅</span>
+      <div><strong>Maintained daily verification discipline</strong> — 26 daily alerts, all triaged same-day. No real mismatch slips through undetected.</div>
+    </li>
+  </ul>
+</section>
+
+<!-- SLIDE 13: Closing -->
+<section class="slide" id="s12">
+  <div class="reveal label">Summary</div>
+  <h1 class="reveal display-heading" style="font-size: clamp(32px, 7vw, 72px);">Catching issues<br><em>before</em> they reach<br>customers.</h1>
+  <div class="reveal divider" style="margin: 24px 0;"></div>
+  <div class="kpi-strip reveal" style="max-width: 900px;">
+    <div class="kpi-card">
+      <div class="kpi-number" style="color: var(--green);">45</div>
+      <div class="kpi-label">Alerts Triaged</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number" style="color: var(--green);">100%</div>
+      <div class="kpi-label">Same-Day Triage</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number" style="color: var(--red);">~39K</div>
+      <div class="kpi-label">Abandoned Listings<br>Now Visible</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number" style="color: var(--red);">2+</div>
+      <div class="kpi-label">Issues Caught & Fixed</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number" style="color: var(--blue);">3</div>
+      <div class="kpi-label">Systemic Bugs Found</div>
+    </div>
+  </div>
+  <p class="reveal body-text" style="margin-top: 24px;">Data Quality Monitoring &middot; March 18 – April 15, 2026</p>
+</section>
+
+<script>
+class SlideEngine {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.current = 0;
+    this.total = this.slides.length;
+    this.init();
+  }
+
+  init() {
+    // Build dot nav
+    const nav = document.getElementById('dotNav');
+    this.slides.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.addEventListener('click', () => this.slides[i].scrollIntoView({ behavior: 'smooth' }));
+      nav.appendChild(btn);
+    });
+    this.dots = [...nav.querySelectorAll('button')];
+
+    // Intersection observer
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          const idx = this.slides.indexOf(entry.target);
+          if (idx !== -1) this.setCurrent(idx);
+        }
+      });
+    }, { threshold: 0.35 });
+    this.slides.forEach(s => observer.observe(s));
+
+    // Keyboard nav
+    document.addEventListener('keydown', e => {
+      if (['ArrowDown', 'ArrowRight', 'Space', 'PageDown'].includes(e.code)) {
+        e.preventDefault();
+        this.go(this.current + 1);
+      } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.code)) {
+        e.preventDefault();
+        this.go(this.current - 1);
+      } else if (e.code === 'Home') {
+        e.preventDefault();
+        this.go(0);
+      } else if (e.code === 'End') {
+        e.preventDefault();
+        this.go(this.total - 1);
+      }
+    });
+
+    // Touch nav
+    let touchY = 0;
+    document.addEventListener('touchstart', e => { touchY = e.touches[0].clientY; });
+    document.addEventListener('touchend', e => {
+      const diff = touchY - e.changedTouches[0].clientY;
+      if (Math.abs(diff) > 50) this.go(this.current + (diff > 0 ? 1 : -1));
+    });
+
+    this.setCurrent(0);
+    this.slides[0].classList.add('visible');
+  }
+
+  setCurrent(idx) {
+    this.current = idx;
+    this.dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    document.getElementById('progressBar').style.width = `${(idx + 1) / this.total * 100}%`;
+    document.getElementById('slideCounter').textContent = `${idx + 1} / ${this.total}`;
+  }
+
+  go(idx) {
+    idx = Math.max(0, Math.min(this.total - 1, idx));
+    this.slides[idx].scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+new SlideEngine();
+</script>
+</body>
+</html>
